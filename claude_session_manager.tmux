@@ -23,7 +23,7 @@ tmux bind-key "$launch_key" \
 [ -n "$codex_launch_key" ] && tmux bind-key "$codex_launch_key" \
   run-shell "$CURRENT_DIR/scripts/launch.sh '#{pane_current_path}' '#{window_id}' 'codex'"
 
-# Open the session picker. Capture the triggering client first (#{client_name})
-# so the picker can move it to the chosen session's origin window.
+# Open the session picker. When pressed from inside an agent session popup, list.sh
+# closes that popup first so the picker opens full-size on the outer client.
 tmux bind-key "$list_key" \
   run-shell "$CURRENT_DIR/scripts/list.sh '#{client_name}'"

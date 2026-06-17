@@ -9,14 +9,16 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 path="${1:-$PWD}"
 window="${2:-}"
 
+claude_prefix="$(get_tmux_option @claude_session_prefix 'claude-')"
+codex_prefix="$(get_tmux_option @codex_session_prefix 'codex-')"
 agent="${3:-$(get_tmux_option @agent_active 'claude')}"
 case "$agent" in
   claude)
-    prefix="$(get_tmux_option @claude_session_prefix 'claude-')"
+    prefix="$claude_prefix"
     cmd="$(get_tmux_option @claude_command 'claude')"
     ;;
   codex)
-    prefix="$(get_tmux_option @codex_session_prefix 'codex-')"
+    prefix="$codex_prefix"
     cmd="$(get_tmux_option @codex_command 'codex')"
     ;;
   *)
@@ -29,8 +31,18 @@ h="$(get_tmux_option @claude_popup_height '90%')"
 
 session="${prefix}$(session_hash "$path")"
 
-tmux has-session -t "$session" 2>/dev/null \
-  || tmux new-session -d -s "$session" -c "$path" "$cmd"
+current_session="$(tmux display-message -p '#S' 2>/dev/null || true)"
+current_agent="$(tmux show-options -qv -t "$current_session" @agent_type 2>/dev/null || true)"
+if [ "$current_agent" = 'claude' ] ||
+  [ "$current_agent" = 'codex' ] ||
+  { [ -n "$claude_prefix" ] && [[ "$current_session" == "$claude_prefix"* ]]; } ||
+  { [ -n "$codex_prefix" ] && [[ "$current_session" == "$codex_prefix"* ]]; }; then
+  tmux display-message '🫪 Popup window already open'
+  exit 0
+fi
+
+tmux has-session -t "$session" 2>/dev/null ||
+  tmux new-session -d -s "$session" -c "$path" "$cmd"
 
 # Record which window launched it, so the picker can jump back here later.
 tmux set-option -t "$session" @agent_type "$agent"
