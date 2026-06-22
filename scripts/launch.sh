@@ -9,17 +9,40 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 path="${1:-$PWD}"
 window="${2:-}"
 
+option_enabled() {
+  case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+    1|yes|true|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+append_arg_once() {
+  local command arg
+  command="$1"
+  arg="$2"
+
+  case " $command " in
+    *" $arg "*) printf '%s' "$command" ;;
+    *) printf '%s %s' "$command" "$arg" ;;
+  esac
+}
+
 claude_prefix="$(get_tmux_option @claude_session_prefix 'claude-')"
 codex_prefix="$(get_tmux_option @codex_session_prefix 'codex-')"
+bypass_permissions="$(get_tmux_option @agent_bypass_permissions 'off')"
 agent="${3:-$(get_tmux_option @agent_active 'claude')}"
 case "$agent" in
   claude)
     prefix="$claude_prefix"
     cmd="$(get_tmux_option @claude_command 'claude')"
+    option_enabled "$bypass_permissions" &&
+      cmd="$(append_arg_once "$cmd" '--permission-mode auto')"
     ;;
   codex)
     prefix="$codex_prefix"
     cmd="$(get_tmux_option @codex_command 'codex')"
+    option_enabled "$bypass_permissions" &&
+      cmd="$(append_arg_once "$cmd" '--dangerously-bypass-approvals-and-sandbox')"
     ;;
   *)
     tmux display-message "tmux-agent-session-manager: unsupported @agent_active '$agent'"
